@@ -1,0 +1,51 @@
+{
+  "users": [
+    {
+      "id": "user-1",
+      "name": "Saiboo",
+      "avatar": "🌸",
+      "color": "#ec4899"
+    },
+    {
+      "id": "user-2",
+      "name": "Machu",
+      "avatar": "⚡",
+      "color": "#06b6d4"
+    }
+  ],
+  "goals": [
+    {
+      "id": "goal-1780230711407",
+      "ownerId": "user-1",
+      "title": "Exercise",
+      "startDate": "2026-06-01",
+      "endDate": "2026-06-21",
+      "frequencyPerWeek": 5,
+      "category": "Fitness",
+      "createdDate": "2026-05-31",
+      "completions": {}
+    },
+    {
+      "id": "goal-1780230768273",
+      "ownerId": "user-1",
+      "title": "reel upload",
+      "startDate": "2026-06-01",
+      "endDate": "2026-06-21",
+      "frequencyPerWeek": 7,
+      "category": "Productivity",
+      "createdDate": "2026-05-31",
+      "completions": {}
+    },
+    {
+      "id": "goal-1780230821404",
+      "ownerId": "user-1",
+      "title": "study",
+      "startDate": "2026-06-01",
+      "endDate": "2026-06-21",
+      "frequencyPerWeek": 5,
+      "category": "Learning",
+      "createdDate": "2026-05-31",
+      "completions": {}
+    }
+  ]
+}

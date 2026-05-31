@@ -4,12 +4,12 @@
   "private": true,
   "description": "Shared goal tracker for friends",
   "scripts": {
-    "dev": "concurrently -n server,client -c cyan,magenta \"npm run server\" \"npm run client\"",
-    "server": "cd server && node index.js",
+    "dev": "concurrently -n api,client -c cyan,magenta \"npm run api\" \"npm run client\"",
+    "api": "cd api && node index.js",
     "client": "cd client && npm run dev",
-    "postinstall": "cd server && npm install && cd ../client && npm install",
+    "postinstall": "cd api && npm install && cd ../client && npm install",
     "build": "cd client && npm run build",
-    "start": "cd server && node index.js"
+    "start": "cd api && node index.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
