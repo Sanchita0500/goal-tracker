@@ -1,0 +1,17 @@
+{
+  "name": "goal-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared goal tracker for friends",
+  "scripts": {
+    "dev": "concurrently -n server,client -c cyan,magenta \"npm run server\" \"npm run client\"",
+    "server": "cd server && node index.js",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "start": "cd server && node index.js",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+client/dist/
+client/node_modules/
+server/node_modules/
+
+# Keep db.json for now since it's our seed, or ignore if you don't want to push seed data
+# server/data/db.json 
