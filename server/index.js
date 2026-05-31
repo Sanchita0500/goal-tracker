@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const { kv } = require('@vercel/kv');
+const { Redis } = require('@upstash/redis');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -15,13 +15,17 @@ app.use(express.json());
 
 // --- Database Helpers ---
 async function getDB() {
-  // If KV is configured, use it
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  // If Upstash Redis is configured, use it
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
-      const data = await kv.get('tracker_db');
+      const redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+      const data = await redis.get('tracker_db');
       if (data) return data;
     } catch (err) {
-      console.error('KV Error reading DB:', err);
+      console.error('Redis Error reading DB:', err);
     }
   }
   
@@ -35,12 +39,16 @@ async function getDB() {
 }
 
 async function saveDB(data) {
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
-      await kv.set('tracker_db', data);
+      const redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+      await redis.set('tracker_db', data);
       return;
     } catch (err) {
-      console.error('KV Error saving DB:', err);
+      console.error('Redis Error saving DB:', err);
     }
   }
 
