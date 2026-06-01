@@ -50,6 +50,17 @@
       "category": "Learning",
       "createdDate": "2026-05-31",
       "completions": {}
+    },
+    {
+      "id": "goal-1780338465018",
+      "ownerId": "user-1",
+      "title": "Test Add",
+      "startDate": "2026-06-01",
+      "endDate": "2026-06-07",
+      "frequencyPerWeek": 2,
+      "category": "General",
+      "createdDate": "2026-06-01",
+      "completions": {}
     }
   ]
 }
