@@ -29,7 +29,7 @@ async function getDB() {
     }
   }
   
-  // Fallback to local file for development if KV is not set up
+  // Fallback to local file for development if Redis is not set up
   try {
     const raw = fs.readFileSync(DB_PATH, 'utf-8');
     return JSON.parse(raw);
@@ -56,16 +56,17 @@ async function saveDB(data) {
   fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
 }
 
-// --- API Routes ---
+// --- API Routes (mounted on a router so the prefix works in both envs) ---
+const router = express.Router();
 
-// GET /api/data — Return all data
-app.get('/api/data', async (req, res) => {
+// GET /data — Return all data
+router.get('/data', async (req, res) => {
   const db = await getDB();
   res.json(db);
 });
 
-// PUT /api/users/:id — Update a user's name/avatar
-app.put('/api/users/:id', async (req, res) => {
+// PUT /users/:id — Update a user's name/avatar
+router.put('/users/:id', async (req, res) => {
   const db = await getDB();
   const { name, avatar, color } = req.body;
   const user = db.users.find(u => u.id === req.params.id);
@@ -79,8 +80,8 @@ app.put('/api/users/:id', async (req, res) => {
   res.json(user);
 });
 
-// POST /api/goals — Create a new goal
-app.post('/api/goals', async (req, res) => {
+// POST /goals — Create a new goal
+router.post('/goals', async (req, res) => {
   const db = await getDB();
   const { ownerId, title, startDate, endDate, frequencyPerWeek, category } = req.body;
 
@@ -107,8 +108,8 @@ app.post('/api/goals', async (req, res) => {
   res.status(201).json(goal);
 });
 
-// DELETE /api/goals/:id — Delete a goal
-app.delete('/api/goals/:id', async (req, res) => {
+// DELETE /goals/:id — Delete a goal
+router.delete('/goals/:id', async (req, res) => {
   const db = await getDB();
   const idx = db.goals.findIndex(g => g.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Goal not found' });
@@ -118,8 +119,8 @@ app.delete('/api/goals/:id', async (req, res) => {
   res.json(removed[0]);
 });
 
-// PUT /api/goals/:id — Update an existing goal
-app.put('/api/goals/:id', async (req, res) => {
+// PUT /goals/:id — Update an existing goal
+router.put('/goals/:id', async (req, res) => {
   const db = await getDB();
   const goal = db.goals.find(g => g.id === req.params.id);
   if (!goal) return res.status(404).json({ error: 'Goal not found' });
@@ -136,8 +137,8 @@ app.put('/api/goals/:id', async (req, res) => {
   res.json(goal);
 });
 
-// POST /api/goals/:id/toggle — Toggle a day's completion
-app.post('/api/goals/:id/toggle', async (req, res) => {
+// POST /goals/:id/toggle — Toggle a day's completion
+router.post('/goals/:id/toggle', async (req, res) => {
   const db = await getDB();
   const goal = db.goals.find(g => g.id === req.params.id);
   if (!goal) return res.status(404).json({ error: 'Goal not found' });
@@ -155,6 +156,12 @@ app.post('/api/goals/:id/toggle', async (req, res) => {
   await saveDB(db);
   res.json(goal);
 });
+
+// Mount router at /api — works for both local dev and Vercel
+// On Vercel, the function at api/index.js receives paths WITHOUT /api prefix,
+// so we also mount at / to cover both cases.
+app.use('/api', router);
+app.use('/', router);
 
 // Serve static client build in production (for local testing of built app)
 const clientBuild = path.join(__dirname, '..', 'client', 'dist');
