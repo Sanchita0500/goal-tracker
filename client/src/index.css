@@ -472,6 +472,27 @@ body::before {
   font-size: 0.9rem;
 }
 
+.user-panel--readonly {
+  opacity: 0.75;
+}
+
+.user-panel__readonly-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.goal-card--readonly {
+  opacity: 0.85;
+}
+
 .user-panel__empty-icon {
   font-size: 2.5rem;
   margin-bottom: 12px;

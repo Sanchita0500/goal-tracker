@@ -1,28 +1,31 @@
 import React from 'react';
 
-export default function DashboardStats({ users, goals }) {
-  // Calculate stats per user
-  const userStats = users.map(user => {
+export default function DashboardStats({ users, goals, activeUserId }) {
+  // Calculate stats for the active user only
+  const activeUser = users.find(u => u.id === activeUserId) || users[0];
+  const otherUser = users.find(u => u.id !== activeUserId) || users[1];
+
+  const getStats = (user) => {
+    if (!user) return { goalCount: 0, completedDays: 0 };
     const userGoals = goals.filter(g => g.ownerId === user.id);
     const totalDays = userGoals.reduce((sum, g) => {
       return sum + Object.values(g.completions || {}).filter(Boolean).length;
     }, 0);
-    return { user, goalCount: userGoals.length, completedDays: totalDays };
-  });
+    return { goalCount: userGoals.length, completedDays: totalDays };
+  };
 
-  const totalGoals = goals.length;
-  const totalCompletions = goals.reduce((sum, g) => {
-    return sum + Object.values(g.completions || {}).filter(Boolean).length;
-  }, 0);
+  const activeStats = getStats(activeUser);
+  const otherStats = getStats(otherUser);
 
-  // Calculate current streak (consecutive days with at least one completion, ending today)
+  // Calculate streak for active user only
   const today = new Date();
   let streak = 0;
+  const activeGoals = goals.filter(g => g.ownerId === activeUserId);
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().split('T')[0];
-    const anyDone = goals.some(g => g.completions && g.completions[dateStr]);
+    const anyDone = activeGoals.some(g => g.completions && g.completions[dateStr]);
     if (anyDone) {
       streak++;
     } else if (i > 0) {
@@ -33,30 +36,27 @@ export default function DashboardStats({ users, goals }) {
   return (
     <div className="dashboard" id="dashboard-stats">
       <div className="stat-card stat-card--pink">
-        <div className="stat-card__icon">🎯</div>
-        <div className="stat-card__value">{totalGoals}</div>
-        <div className="stat-card__label">Active Goals</div>
+        <div className="stat-card__icon">{activeUser?.avatar || '🎯'}</div>
+        <div className="stat-card__value">{activeStats.goalCount}</div>
+        <div className="stat-card__label">{activeUser?.name || 'My'} Goals</div>
       </div>
       <div className="stat-card stat-card--emerald">
         <div className="stat-card__icon">✅</div>
-        <div className="stat-card__value">{totalCompletions}</div>
-        <div className="stat-card__label">Days Completed</div>
+        <div className="stat-card__value">{activeStats.completedDays}</div>
+        <div className="stat-card__label">{activeUser?.name || 'My'} Check-ins</div>
       </div>
       <div className="stat-card stat-card--violet">
         <div className="stat-card__icon">🔥</div>
         <div className="stat-card__value">{streak}</div>
-        <div className="stat-card__label">Day Streak</div>
+        <div className="stat-card__label">{activeUser?.name || 'My'} Streak</div>
       </div>
-      {userStats.map(({ user, completedDays }) => {
-        const colorKey = user.id === 'user-1' ? 'cyan' : 'pink';
-        return (
-          <div key={user.id} className={`stat-card stat-card--${colorKey}`}>
-            <div className="stat-card__icon">{user.avatar}</div>
-            <div className="stat-card__value">{completedDays}</div>
-            <div className="stat-card__label">{user.name}'s Check-ins</div>
-          </div>
-        );
-      })}
+      {otherUser && (
+        <div className="stat-card stat-card--cyan">
+          <div className="stat-card__icon">{otherUser.avatar}</div>
+          <div className="stat-card__value">{otherStats.completedDays}</div>
+          <div className="stat-card__label">{otherUser.name}'s Check-ins</div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Target, Pencil } from 'lucide-react';
 import UserToggle from './components/UserToggle.jsx';
 import DashboardStats from './components/DashboardStats.jsx';
@@ -18,14 +18,23 @@ export default function App() {
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingName, setEditingName] = useState('');
 
+  // Track in-flight mutations so polling doesn't overwrite optimistic updates
+  const pendingMutations = useRef(0);
+
   // --- Fetch all data ---
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (force = false) => {
+    // Skip polling fetch if there are pending mutations (avoid overwriting optimistic updates)
+    if (!force && pendingMutations.current > 0) return;
+
     try {
       const res = await fetch(`${API_BASE}/data`);
       if (!res.ok) throw new Error('Failed to load data');
       const data = await res.json();
-      setUsers(data.users || []);
-      setGoals(data.goals || []);
+      // Only update if no mutations started while we were fetching
+      if (pendingMutations.current === 0) {
+        setUsers(data.users || []);
+        setGoals(data.goals || []);
+      }
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -35,14 +44,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-    // Poll every 10 seconds for real-time updates when both users are editing
-    const interval = setInterval(fetchData, 10000);
+    fetchData(true);
+    // Poll every 15 seconds for real-time updates when both users are editing
+    const interval = setInterval(() => fetchData(false), 15000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
   // --- Add a goal ---
   const handleAddGoal = async (goalData) => {
+    pendingMutations.current++;
     try {
       const res = await fetch(`${API_BASE}/goals`, {
         method: 'POST',
@@ -56,25 +66,33 @@ export default function App() {
       setEditingGoal(null);
     } catch (err) {
       alert('Error adding goal: ' + err.message);
+    } finally {
+      pendingMutations.current--;
     }
   };
 
   // --- Delete a goal ---
   const handleDeleteGoal = async (goalId) => {
     if (!confirm('Are you sure you want to delete this goal?')) return;
+    pendingMutations.current++;
+    // Optimistic
+    setGoals(prev => prev.filter(g => g.id !== goalId));
     try {
       const res = await fetch(`${API_BASE}/goals/${goalId}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Failed to delete goal');
-      setGoals(prev => prev.filter(g => g.id !== goalId));
     } catch (err) {
       alert('Error deleting goal: ' + err.message);
+      fetchData(true);
+    } finally {
+      pendingMutations.current--;
     }
   };
 
   // --- Toggle a day ---
   const handleToggle = async (goalId, date, completed) => {
+    pendingMutations.current++;
     // Optimistic update
     setGoals(prev =>
       prev.map(g => {
@@ -98,7 +116,9 @@ export default function App() {
       if (!res.ok) throw new Error('Failed to toggle');
     } catch (err) {
       // Revert on failure
-      fetchData();
+      fetchData(true);
+    } finally {
+      pendingMutations.current--;
     }
   };
 
@@ -110,6 +130,7 @@ export default function App() {
 
   // --- Update an existing goal ---
   const handleUpdateGoal = async (goalId, goalData) => {
+    pendingMutations.current++;
     // Optimistic update
     setGoals(prev => prev.map(g => g.id === goalId ? { ...g, ...goalData } : g));
     setShowModal(false);
@@ -122,8 +143,10 @@ export default function App() {
       });
       if (!res.ok) throw new Error('Failed to update goal');
     } catch (err) {
-      fetchData();
+      fetchData(true);
       alert('Error updating goal: ' + err.message);
+    } finally {
+      pendingMutations.current--;
     }
   };
 
@@ -139,6 +162,7 @@ export default function App() {
       setEditingUserId(null);
       return;
     }
+    pendingMutations.current++;
     // Optimistic update
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, name: trimmed } : u));
     setEditingUserId(null);
@@ -150,7 +174,9 @@ export default function App() {
       });
       if (!res.ok) throw new Error('Failed to rename');
     } catch (err) {
-      fetchData();
+      fetchData(true);
+    } finally {
+      pendingMutations.current--;
     }
   };
 
@@ -173,7 +199,7 @@ export default function App() {
           <div style={{ fontSize: '3rem', marginBottom: 16 }}>⚠️</div>
           <div style={{ color: '#ef4444', fontSize: '1.1rem', marginBottom: 8 }}>Connection Error</div>
           <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 20 }}>{error}</div>
-          <button className="btn-add-goal" onClick={fetchData}>Retry</button>
+          <button className="btn-add-goal" onClick={() => fetchData(true)}>Retry</button>
         </div>
       </div>
     );
@@ -184,6 +210,10 @@ export default function App() {
   const user2 = users.find(u => u.id === 'user-2') || { id: 'user-2', name: 'User 2', avatar: '⚡', color: '#06b6d4' };
   const user1Goals = goals.filter(g => g.ownerId === 'user-1');
   const user2Goals = goals.filter(g => g.ownerId === 'user-2');
+
+  // Determine which panels are editable based on active user
+  const user1ReadOnly = activeUserId !== 'user-1';
+  const user2ReadOnly = activeUserId !== 'user-2';
 
   return (
     <div className="app">
@@ -202,8 +232,8 @@ export default function App() {
         />
       </header>
 
-      {/* Dashboard Stats */}
-      <DashboardStats users={users} goals={goals} />
+      {/* Dashboard Stats — scoped to active user */}
+      <DashboardStats users={users} goals={goals} activeUserId={activeUserId} />
 
       {/* Goals Section */}
       <section className="goals-section">
@@ -225,7 +255,7 @@ export default function App() {
 
         <div className="users-grid">
             {/* User 1 Panel */}
-            <div className="user-panel user-panel--pink">
+            <div className={`user-panel user-panel--pink ${user1ReadOnly ? 'user-panel--readonly' : ''}`}>
               <div className="user-panel__header">
                 <div className="user-panel__avatar user-panel__avatar--pink">
                   {user1.avatar}
@@ -246,7 +276,10 @@ export default function App() {
                       <span className="name-edit-icon"><Pencil size={13} /></span>
                     </div>
                   )}
-                  <div className="user-panel__goal-count">{user1Goals.length} goal{user1Goals.length !== 1 ? 's' : ''}</div>
+                  <div className="user-panel__goal-count">
+                    {user1Goals.length} goal{user1Goals.length !== 1 ? 's' : ''}
+                    {user1ReadOnly && <span className="user-panel__readonly-badge">👁 View Only</span>}
+                  </div>
                 </div>
               </div>
               {user1Goals.length === 0 ? (
@@ -262,13 +295,14 @@ export default function App() {
                     onToggle={handleToggle}
                     onDelete={handleDeleteGoal}
                     onEdit={handleOpenEdit}
+                    readOnly={user1ReadOnly}
                   />
                 ))
               )}
             </div>
 
             {/* User 2 Panel */}
-            <div className="user-panel user-panel--cyan">
+            <div className={`user-panel user-panel--cyan ${user2ReadOnly ? 'user-panel--readonly' : ''}`}>
               <div className="user-panel__header">
                 <div className="user-panel__avatar user-panel__avatar--cyan">
                   {user2.avatar}
@@ -289,7 +323,10 @@ export default function App() {
                       <span className="name-edit-icon"><Pencil size={13} /></span>
                     </div>
                   )}
-                  <div className="user-panel__goal-count">{user2Goals.length} goal{user2Goals.length !== 1 ? 's' : ''}</div>
+                  <div className="user-panel__goal-count">
+                    {user2Goals.length} goal{user2Goals.length !== 1 ? 's' : ''}
+                    {user2ReadOnly && <span className="user-panel__readonly-badge">👁 View Only</span>}
+                  </div>
                 </div>
               </div>
               {user2Goals.length === 0 ? (
@@ -305,6 +342,7 @@ export default function App() {
                     onToggle={handleToggle}
                     onDelete={handleDeleteGoal}
                     onEdit={handleOpenEdit}
+                    readOnly={user2ReadOnly}
                   />
                 ))
               )}

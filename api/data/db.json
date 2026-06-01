@@ -23,7 +23,9 @@
       "frequencyPerWeek": 5,
       "category": "Fitness",
       "createdDate": "2026-05-31",
-      "completions": {}
+      "completions": {
+        "2026-06-01": true
+      }
     },
     {
       "id": "goal-1780230768273",

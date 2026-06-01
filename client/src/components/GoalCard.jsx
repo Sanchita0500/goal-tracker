@@ -77,7 +77,7 @@ function isWithinEditWindow(dateStr) {
   return diffDays >= -1 && diffDays <= 1;
 }
 
-export default function GoalCard({ goal, onToggle, onDelete, onEdit }) {
+export default function GoalCard({ goal, onToggle, onDelete, onEdit, readOnly }) {
   const [expanded, setExpanded] = useState(false);
   const allDates = getDatesInRange(goal.startDate, goal.endDate);
   const weeks = groupByWeek(allDates);
@@ -101,7 +101,7 @@ export default function GoalCard({ goal, onToggle, onDelete, onEdit }) {
   };
 
   return (
-    <div className="goal-card" id={`goal-${goal.id}`}>
+    <div className={`goal-card ${readOnly ? 'goal-card--readonly' : ''}`} id={`goal-${goal.id}`}>
       <div className="goal-card__header">
         <div className="goal-card__info">
           <h3 className="goal-card__title">{goal.title}</h3>
@@ -129,22 +129,26 @@ export default function GoalCard({ goal, onToggle, onDelete, onEdit }) {
           </div>
         </div>
         <div className="goal-card__actions">
-          <button
-            className="goal-card__action-btn"
-            onClick={() => onEdit(goal)}
-            title="Edit goal"
-            id={`edit-${goal.id}`}
-          >
-            <Pencil size={15} />
-          </button>
-          <button
-            className="goal-card__action-btn goal-card__action-btn--danger"
-            onClick={() => onDelete(goal.id)}
-            title="Delete goal"
-            id={`delete-${goal.id}`}
-          >
-            <Trash2 size={15} />
-          </button>
+          {!readOnly && (
+            <>
+              <button
+                className="goal-card__action-btn"
+                onClick={() => onEdit(goal)}
+                title="Edit goal"
+                id={`edit-${goal.id}`}
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                className="goal-card__action-btn goal-card__action-btn--danger"
+                onClick={() => onDelete(goal.id)}
+                title="Delete goal"
+                id={`delete-${goal.id}`}
+              >
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
           <button
             className="goal-card__collapse-btn"
             onClick={() => setExpanded(!expanded)}
@@ -195,20 +199,28 @@ export default function GoalCard({ goal, onToggle, onDelete, onEdit }) {
 
                   const isChecked = goal.completions && goal.completions[dateStr];
                   const isToday = dateStr === today;
-                  const canEdit = isWithinEditWindow(dateStr);
+                  const canEditDate = isWithinEditWindow(dateStr);
+                  // A cell is interactive only if the user owns this goal AND the date is within ±1 day
+                  const canInteract = !readOnly && canEditDate;
 
                   return (
                     <div
                       key={dateStr}
-                      className={`day-cell ${isToday ? 'day-cell--today' : ''} ${!canEdit ? 'day-cell--locked' : ''}`}
-                      onClick={() => canEdit && onToggle(goal.id, dateStr, !isChecked)}
-                      title={canEdit ? (isChecked ? 'Uncheck' : 'Check') : 'Can only check-in within ±1 day'}
+                      className={`day-cell ${isToday ? 'day-cell--today' : ''} ${!canInteract ? 'day-cell--locked' : ''}`}
+                      onClick={() => canInteract && onToggle(goal.id, dateStr, !isChecked)}
+                      title={
+                        readOnly
+                          ? 'Switch to this user to edit'
+                          : canEditDate
+                            ? (isChecked ? 'Uncheck' : 'Check')
+                            : 'Can only check-in within ±1 day'
+                      }
                       id={`day-${goal.id}-${dateStr}`}
                     >
                       <span className="day-cell__name">{getDayName(dateStr)}</span>
-                      <div className={`day-checkbox ${isChecked ? 'day-checkbox--checked' : ''} ${!canEdit && !isChecked ? 'day-checkbox--locked' : ''}`}>
+                      <div className={`day-checkbox ${isChecked ? 'day-checkbox--checked' : ''} ${!canInteract && !isChecked ? 'day-checkbox--locked' : ''}`}>
                         {isChecked && <Check size={16} strokeWidth={3} />}
-                        {!canEdit && !isChecked && <Lock size={10} />}
+                        {!canInteract && !isChecked && <Lock size={10} />}
                       </div>
                       <span className="day-cell__date">{formatShortDate(dateStr)}</span>
                     </div>
