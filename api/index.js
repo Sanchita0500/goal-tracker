@@ -13,6 +13,14 @@ const DB_PATH = path.join(__dirname, 'data', 'db.json');
 app.use(cors());
 app.use(express.json());
 
+// Prevent browser caching for API requests
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 // --- Database Helpers ---
 async function getDB() {
   // If Upstash Redis is configured, use it
